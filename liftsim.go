@@ -1,10 +1,13 @@
 package lift
 
 import (
-	"errors"
-	"io"
-	"sync"
-	"time"
+	"bytes"
+	"fmt"
+	"html/template"
+	"io/ioutil"
+	"os/exec"
+
+	"github.com/gobuffalo/packr"
 )
 
 const (
@@ -13,8 +16,8 @@ const (
 	endSensorOffset  = 20  // [cm] distance from first and last floor to end sensors.
 )
 
-// Lift defines what a lift can do.
-type Lift interface {
+// Lifter defines what a lift can do.
+type Lifter interface {
 	SetMotorDirection(direction int)
 	OrderButtonLight(btn int, floor int, on bool)
 	FloorIndicator(floor int)
@@ -27,130 +30,148 @@ type Lift interface {
 	Obstruction() bool
 }
 
-// LiftSim represent one simulated lift.
-type LiftSim struct {
-	mu sync.RWMutex
-	// Cart state
-	floor      int     // 0-indexed => Ground floor = Floor 0
-	liftHeight float32 // [cm] current hight of lift
-	direction  int     // -1=down, 0=stopped, 1=up
-	belowFirst bool
-	aboveLast  bool
-
-	// Light state
-	stopLight bool
-	doorLight bool
-
-	// Lift specifications
-	floors      int     // number of floors
-	shaftHeight float32 // [cm]
-	speed       float32 // [cm/s] movement speed of lift
-
-	// Communication
-	errors chan<- error
-	name   string
-	output io.Writer
+// Lift ...
+type Lift struct {
+	sim bool
 }
 
-// NewLiftSim returns a new simulated lift.
-func NewLiftSim(err chan<- error, options ...Option) (*LiftSim, error) {
-	sim := LiftSim{
-		errors:      err,
-		floors:      4,
-		shaftHeight: floorHight * 4,
-		speed:       50,
-	}
+// NewLift returns a new simulated lift.
+func NewLift(err chan<- error, options ...Option) (*Lift, error) {
+	lift := Lift{}
 
 	for _, opt := range options {
-		if err := opt(&sim); err != nil {
+		if err := opt(&lift); err != nil {
 			return nil, err
 		}
 	}
 
-	return &sim, nil
+	return &lift, nil
 }
 
 // Run starts the lift.
-func (ls *LiftSim) Run() {
-	go func() {
-		var scaling = 100
-		ticker := time.NewTicker(time.Duration(1000/scaling) * time.Millisecond)
-		for range ticker.C {
-			ls.mu.Lock()
-			ls.liftHeight = ls.liftHeight + float32(ls.direction)*ls.speed/float32(scaling)
-			ls.mu.Unlock()
-
-			ls.mu.RLock()
-			if ls.liftHeight > ls.shaftHeight+10.0 {
-				ls.errors <- errors.New("lift hit end sensor above top floor")
-			} else if ls.liftHeight < -10.0 {
-				ls.errors <- errors.New("lift hit end sensor below ground floor")
-			}
-			ls.mu.RUnlock()
-
-			//ls.writeState()
-		}
-	}()
+func (ls *Lift) Run() {
+	panic("not implemented")
 }
 
 // SetMotorDirection sets the direction of travel for the lift. It accept only a integer with the convention
 //  -1 = down, 0 = stop, 1 = up. If any other integer is supplied it will do nothing.
-func (ls *LiftSim) SetMotorDirection(direction int) {
-	invalid := direction != 0 && direction != -1 && direction != 1
-	if invalid {
-		return
-	}
+func (ls *Lift) SetMotorDirection(direction int) {
+	panic("not implemented")
 
-	ls.mu.Lock()
-	ls.direction = direction
-	ls.mu.Unlock()
 }
 
 // OrderButtonLight sets the lift for the specified button.
-func (ls *LiftSim) OrderButtonLight(btn int, floor int, on bool) {
+func (ls *Lift) OrderButtonLight(btn int, floor int, on bool) {
 	panic("not implemented")
 }
 
 // FloorIndicator sets the floor indicator to the specified floor.
-func (ls *LiftSim) FloorIndicator(floor int) {
+func (ls *Lift) FloorIndicator(floor int) {
 	panic("not implemented")
 }
 
 // DoorLight toggles the door open light.
-func (ls *LiftSim) DoorLight(on bool) {
+func (ls *Lift) DoorLight(on bool) {
 	panic("not implemented")
 }
 
 // StopLight toggles the stop light.
-func (ls *LiftSim) StopLight(on bool) {
+func (ls *Lift) StopLight(on bool) {
 	panic("not implemented")
 }
 
 // OrderButton polls if anyone is pressing the order button specified.
-func (ls *LiftSim) OrderButton(button int, floor int) bool {
+func (ls *Lift) OrderButton(button int, floor int) bool {
 	panic("not implemented")
 }
 
 // FloorSensor polls the floor sensors. If the lift isn't in any floor at the moment inFloor returns false.
-func (ls *LiftSim) FloorSensor() (inFloor bool, floor int) {
-	ls.mu.RLock()
-	defer ls.mu.RUnlock()
-
-	distanceFromFloor := int64(ls.liftHeight) % floorHight
-	sensorTriggered := distanceFromFloor < inFloorThreshold || distanceFromFloor > floorHight-inFloorThreshold
-	if !sensorTriggered {
-		return false, 0
-	}
-	return true, int(ls.liftHeight / floorHight)
-
+func (ls *Lift) FloorSensor() (inFloor bool, floor int) {
+	panic("not implemented")
 }
 
 // StopButton polls of anyone is pressing the stop button.
-func (ls *LiftSim) StopButton() bool {
+func (ls *Lift) StopButton() bool {
 	panic("not implemented")
 }
 
 // Obstruction polls if the obstruction switch is enabled.
-func (ls *LiftSim) Obstruction() bool {
+func (ls *Lift) Obstruction() bool {
 	panic("not implemented")
+}
+
+type simConfig struct {
+	TravelTimeBetweenFloors int
+	TravelTimePassingFloors int
+	BtnDepressedTime        int
+
+	NumFloors int
+
+	ComPort int
+}
+
+func spawnSimulator(config simConfig) error {
+	// Unbox executable binary.
+	box := packr.NewBox("./bin")
+	binData := box.Bytes("sim_server")
+
+	// Create temporary file.
+	tmpExec, err := ioutil.TempFile("", "sim_server")
+	if err != nil {
+		return fmt.Errorf("unable to create temp executable: %v", err)
+	}
+
+	// Make temporary executable.
+	if err := tmpExec.Chmod(0777); err != nil {
+		return fmt.Errorf("unable to let temp executable actually be executable: %v", err)
+	}
+	defer tmpExec.Close()
+
+	// Write sim_server binary data to temporary file.
+	if _, err := tmpExec.Write(binData); err != nil {
+		return fmt.Errorf("unable to write binary data to temp file: %d", err)
+	}
+
+	// Make temporary config file.
+	tmpConfig, err := ioutil.TempFile("", "sim_config")
+	if err != nil {
+		return fmt.Errorf("unable to create temp config: %v", err)
+	}
+	defer tmpConfig.Close()
+
+	// Fill config file
+	b, err := createConfigBytes(config)
+	if err != nil {
+		return err
+	}
+	tmpConfig.Write(b)
+
+	// Close files.
+	tmpExec.Close()
+	tmpConfig.Close()
+
+	// Open gnome-terminal and run simulator inside it.
+	c := exec.Command("gnome-terminal", "--working-directory=/tmp", "-e", tmpExec.Name()+"	"+tmpConfig.Name())
+	if _, err := c.Output(); err != nil {
+		return fmt.Errorf("failed to run simulator in gnome-terminal: %v", err)
+	}
+
+	return nil
+}
+
+func createConfigBytes(config simConfig) ([]byte, error) {
+	box := packr.NewBox("./bin")
+	configTemplate := box.String("config.con")
+	tmpl, err := template.New("config").Parse(configTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template: %v", err)
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	if err := tmpl.Execute(buf, config); err != nil {
+		return nil, fmt.Errorf("failed to execute template: %v", err)
+	}
+
+	return buf.Bytes(), nil
 }
