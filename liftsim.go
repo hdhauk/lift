@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"math/rand"
 	"os/exec"
 
 	"github.com/gobuffalo/packr"
@@ -32,12 +33,30 @@ type Lifter interface {
 
 // Lift ...
 type Lift struct {
-	sim bool
+	sim       bool
+	simConfig simConfig
+}
+type simConfig struct {
+	TravelTimeBetweenFloors int
+	TravelTimePassingFloors int
+	BtnDepressedTime        int
+
+	NumFloors int
+
+	ComPort int
 }
 
-// NewLift returns a new simulated lift.
-func NewLift(err chan<- error, options ...Option) (*Lift, error) {
-	lift := Lift{}
+// New returns a new simulated lift.
+func New(options ...Option) (*Lift, error) {
+	lift := Lift{
+		simConfig: simConfig{
+			TravelTimeBetweenFloors: 2000,
+			TravelTimePassingFloors: 500,
+			BtnDepressedTime:        200,
+			NumFloors:               4,
+			ComPort:                 1024 + rand.Intn(65535-1024), // Pick random port
+		},
+	}
 
 	for _, opt := range options {
 		if err := opt(&lift); err != nil {
@@ -98,16 +117,6 @@ func (ls *Lift) StopButton() bool {
 // Obstruction polls if the obstruction switch is enabled.
 func (ls *Lift) Obstruction() bool {
 	panic("not implemented")
-}
-
-type simConfig struct {
-	TravelTimeBetweenFloors int
-	TravelTimePassingFloors int
-	BtnDepressedTime        int
-
-	NumFloors int
-
-	ComPort int
 }
 
 func spawnSimulator(config simConfig) error {
