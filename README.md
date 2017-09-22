@@ -1,4 +1,7 @@
 # lift
+[![GoDoc](https://godoc.org/github.com/hdhauk/lift?status.svg)](https://godoc.org/github.com/hdhauk/lift)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hdhauk/lift)](https://goreportcard.com/report/github.com/hdhauk/lift)
+
 Package lift provide an united interface for connection to either physical lifts or simulated lifts for use in the course TTK4145 at The Norwegian University of Science and Technology. This package is based on work done by Martin Korsgaard, Morten Fyhn and [klasbo](http://github.com/klasbo).
 
 This package have not been tested with physical hardware, but the simulator part are tested on Ubuntu 17.04. To be able to compile you must have the Comedi drivers which can be downloaded by:
