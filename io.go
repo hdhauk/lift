@@ -1,14 +1,8 @@
-package driver
+package lift
 
 /*
 	This package is in large part based on the hardware interface by Morten Fyhn (github.com/mortenfyhn)
-	--> github.com/mortenfyhn/TTK4145-Heis/blob/master/Lift/src/hw/channels.go
-	--> github.com/mortenfyhn/TTK4145-Heis/blob/master/Lift/src/hw/lift.go
-	--> github.com/mortenfyhn/TTK4145-Heis/blob/master/Lift/src/hw/io.go
-
-	It is however re-factored to comply with the Go guidelines for best practices,
-	especially with respect to naming conventions, and some functions are modified
-	to be more compatible with the rest of the driver package.
+	--> github.com/mortenfyhn/TTK4145-Heis
 */
 
 /*
@@ -16,16 +10,13 @@ package driver
 #include "c_io.h"
 */
 import "C"
-import "fmt"
+import "errors"
 
 func ioInit() error {
 	// Initialize hardware
 	if int(C.io_init()) == 0 {
-		return fmt.Errorf(`unable to initialize hardware driver.
-			Make sure everything is turned on and connected`)
+		return errors.New("unable to initialize hardware driver (is it on?)")
 	}
-
-	// Turn off all lights
 	return nil
 }
 

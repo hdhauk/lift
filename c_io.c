@@ -2,7 +2,7 @@
 // These functions provide and interface to libComedi limited to use in
 // the real time lab.
 //
-// 2006, Martin Korsgaard <-- HEI Martin:) Thanks for stopping by and stalking yourself!
+// 2006, Martin Korsgaard
 
 
 #include "c_io.h"
@@ -10,10 +10,7 @@
 
 #include <comedilib.h>
 
-
 static comedi_t *it_g = NULL;
-
-
 
 int io_init() {
     int i = 0;
