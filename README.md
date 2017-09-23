@@ -28,7 +28,7 @@ package main
 
 import "github.com/hdhauk/lift"
 
-func main{
+func main(){
   // The order to which options or how many options you supply doesn't matter.
   // Here we configure the simulator to have 6 floors, and to listen on port 9999.
   // If neither is supplied the defaults will be used (4 floors and a random port).
@@ -42,7 +42,7 @@ func main{
   }
 
   // The simulator can then be controlled by using the methods defined by Lifter.
-  // Example:
+  // Example: Sending the lift upward.
   sim.SetMotorDirection(1)
 }
 ```
