@@ -26,7 +26,7 @@ packr 						# Generate static files that contain binaries and config.
 ```GO
 package main
 
-import "github.com/hdhauk/lift
+import "github.com/hdhauk/lift"
 
 func main{
   // The order to which options or how many options you supply doesn't matter.
