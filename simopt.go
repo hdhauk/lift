@@ -49,7 +49,7 @@ func BtnDepressedTime(d time.Duration) SimOption {
 }
 
 // ComPort sets what port the simulator should listen on. This must be unique per
-// instance of simulators. Must be in the range 1024 - 65535;
+// instance of simulators. Must be in the range 1024 - 65535.
 func ComPort(port int) SimOption {
 	return func(l *liftSim) error {
 		if port < 1024 || port > 65535 {
